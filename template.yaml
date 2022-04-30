@@ -1,0 +1,315 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Sample template for Single-account setup of QLDB and KMS resources
+ 
+Parameters:
+   pAdminUserName:
+     Type: String
+     Default: "admin"
+     Description: "Name of the Key Admin IAM user."
+ 
+Resources:
+  # IAM Role for QLDB ledger editors (support CRUD operations)
+  rEditorRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+            AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+            - "sts:AssumeRole"
+      Path: "/"
+
+  # IAM Policy for the Editor Role
+  rEditorPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "QLDBEditorPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+            - "qldb:SendCommand"
+            Resource: !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}"
+          -
+            Effect: "Allow"
+            Action:
+            - "qldb:PartiQL*"
+            Resource:
+            - !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}/table/*"
+            - !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}/information_schema/user_tables"
+          -
+            Effect: "Allow"
+            Action:
+            - "kms:GetPublicKey"
+            - "kms:Sign"
+            - "kms:Verify"
+            Resource: !GetAtt rKMSKeyForQldbSigning.Arn
+          -
+            Effect: "Allow"
+            Action:
+            - kms:GenerateDataKey
+            - kms:Decrypt
+            - kms:Encrypt
+            Resource: !GetAtt rKMSKeyForQldbEncryption.Arn
+          -
+            Effect: "Allow"
+            Action:
+            - "cloudshell:*"
+            Resource: !Sub "arn:aws:cloudshell:${AWS::Region}:${AWS::AccountId}:*"
+          -
+            Effect: "Allow"
+            Action:
+            - "cloudformation:DescribeStacks"
+            Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+          -
+            Effect: "Allow"
+            Action:
+            - "sts:AssumeRole"
+            Resource: !GetAtt rAuditorRole.Arn
+      Roles:
+        -
+          Ref: rEditorRole
+
+  # IAM Role for QLDB ledger auditors
+  rAuditorRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+            AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action:
+            - "sts:AssumeRole"
+      Path: "/"
+
+  # IAM Policy for the auditor role
+  rAuditorPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "QLDBAuditorPolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Action:
+            - "qldb:SendCommand"
+            Resource: !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}"
+          -
+            Effect: "Allow"
+            Action:
+            - "qldb:PartiQLSelect"
+            - "qldb:PartiQLHistoryFunction"
+            Resource:
+            - !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}/table/*"
+            - !Sub "arn:aws:qldb:${AWS::Region}:${AWS::AccountId}:ledger/${rQLDBLedger}/information_schema/user_tables"
+          -
+            Effect: "Allow"
+            Action:
+            - "kms:Verify"
+            Resource: !GetAtt rKMSKeyForQldbSigning.Arn
+          -
+            Effect: "Allow"
+            Action:
+            - kms:Decrypt
+            Resource: !GetAtt rKMSKeyForQldbEncryption.Arn
+          -
+            Effect: "Allow"
+            Action:
+            - "cloudshell:*"
+            Resource: !Sub "arn:aws:cloudshell:${AWS::Region}:${AWS::AccountId}:*"
+          -
+            Effect: "Allow"
+            Action:
+            - "cloudformation:DescribeStacks"
+            Resource: !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+          -
+            Effect: "Allow"
+            Action:
+            - "sts:AssumeRole"
+            Resource: !GetAtt rEditorRole.Arn
+      Roles:
+        -
+          Ref: rAuditorRole    
+
+  # KMS Key used to sign and verify table entries in QLDB ledger  
+  # Key rotation cannot be turned on for Asymmetric keys          
+  rKMSKeyForQldbSigning:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: Key used to sign and verify table entries in QLDB ledger
+      KeyUsage: SIGN_VERIFY
+      KeySpec: ECC_NIST_P256
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: "Allow all KMS Permissions for root user"
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action:
+            - kms:*
+          Resource: '*'
+        - Sid: "Allow access for Key Administrators"
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${pAdminUserName}'
+          Action:
+            - kms:Create*
+            - kms:Describe*
+            - kms:Enable*
+            - kms:List*
+            - kms:Put*
+            - kms:Update*
+            - kms:Revoke*
+            - kms:Disable*
+            - kms:Get*
+            - kms:Delete*
+            - kms:TagResource
+            - kms:UntagResource
+            - kms:ScheduleKeyDeletion
+            - kms:CancelKeyDeletion
+          Resource: '*'
+        - Sid: "Allow use of the key for signing"
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt rEditorRole.Arn
+          Action:
+            - kms:DescribeKey
+            - kms:GetPublicKey
+            - kms:Sign
+          Resource: '*'
+        - Sid: "Allow use of key for verification"
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt rAuditorRole.Arn
+          Action:
+            - kms:DescribeKey
+            - kms:GetPublicKey
+            - kms:Verify
+          Resource: '*'
+        - Sid: "Allow attachment of persistent resources"
+          Effect: Allow
+          Principal:
+            AWS:
+            - !GetAtt rAuditorRole.Arn
+            - !GetAtt rEditorRole.Arn
+          Action:
+            - kms:CreateGrant
+            - kms:ListGrants
+            - kms:RevokeGrant
+          Resource: '*'
+          Condition:
+            Bool:
+            'kms:GrantIsForAWSResource': 'true'
+  rSigningKeyAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: 'alias/qldbKeySign'
+      TargetKeyId: !Ref rKMSKeyForQldbSigning
+
+  # KMS Key used to encrypt QLDB ledger data at rest        
+  rKMSKeyForQldbEncryption:
+    Type: 'AWS::KMS::Key'
+    Properties:
+      Description: Key used to encrypt QLDB ledger data at rest
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: "Allow all KMS Permissions for root user"
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+          Action:
+            - kms:*
+          Resource: '*'
+        - Sid: "Allow access for Key Administrators"
+          Effect: Allow
+          Principal:
+            AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:user/${pAdminUserName}'
+          Action:
+            - kms:Create*
+            - kms:Describe*
+            - kms:Enable*
+            - kms:List*
+            - kms:Put*
+            - kms:Update*
+            - kms:Revoke*
+            - kms:Disable*
+            - kms:Get*
+            - kms:Delete*
+            - kms:TagResource
+            - kms:UntagResource
+            - kms:ScheduleKeyDeletion
+            - kms:CancelKeyDeletion
+          Resource: '*'
+        - Sid: "Allow editor of the key for encrypt/decrypt"
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt rEditorRole.Arn
+          Action:
+            - kms:GenerateDataKey
+            - kms:Decrypt
+            - kms:Encrypt
+          Resource: '*'
+        - Sid: "Allow auditor of the key for decrypt"
+          Effect: Allow
+          Principal:
+            AWS: !GetAtt rAuditorRole.Arn
+          Action:
+            - kms:Decrypt
+          Resource: '*'
+        - Sid: "Allow attachment of persistent resources"
+          Effect: Allow
+          Principal:
+            AWS:
+            - !GetAtt rAuditorRole.Arn
+            - !GetAtt rEditorRole.Arn
+          Action:
+            - kms:CreateGrant
+            - kms:ListGrants
+            - kms:RevokeGrant
+          Resource: '*'
+          Condition:
+            Bool:
+            'kms:GrantIsForAWSResource': 'true'
+  rEncryptionKeyAlias:
+    Type: 'AWS::KMS::Alias'
+    Properties:
+      AliasName: 'alias/qldbKeyEncrypt'
+      TargetKeyId: !Ref rKMSKeyForQldbEncryption
+
+  # QLDB Ledger
+  # Note - Deletion Protection is turned off
+  # It is recommended for it to be turned on for production to avoid accidental deletion
+  rQLDBLedger:
+    Type: "AWS::QLDB::Ledger"
+    Properties:
+      Name: "SharedLedger"
+      DeletionProtection: false
+      KmsKey: !Ref rKMSKeyForQldbEncryption
+      PermissionsMode: "STANDARD"
+ 
+Outputs:
+  oSigningKeyARN:
+    Description: 'KMS CMK for Signing QLDB ledger entries'
+    Value: !GetAtt 'rKMSKeyForQldbSigning.Arn'
+  oQLDBLedgerName:
+    Description: 'Name of the QLDB ledger'
+    Value: !Ref rQLDBLedger
+  oAuditorRoleARN:
+    Description: 'Auditor IAM Role'
+    Value: !GetAtt 'rAuditorRole.Arn'
+  oEditorRoleARN:
+    Description: 'Editor IAM Role'
+    Value: !GetAtt 'rEditorRole.Arn'
