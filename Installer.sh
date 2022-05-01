@@ -19,17 +19,6 @@
 # INSTALLATION
 # ------------------------------------------------------------------
 
-# Set the name of the IAM admin user
-export QLDB_KMS_ADMIN=admin
-
-# Deploy the CloudFormation template in us-east-1 region
-aws cloudformation deploy --region us-east-1 --template-file ./template.yaml \
---stack-name QLDB-KMS-TEST \
---parameter-overrides pAdminUserName=$QLDB_KMS_ADMIN \
---capabilities CAPABILITY_NAMED_IAM \
---no-fail-on-empty-changeset
-
-
 # Install OpenSSL (Optional)
 cd ~
 sudo yum install -y openssl

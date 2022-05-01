@@ -57,10 +57,10 @@ The actions performed by the users are explained at a high level in this section
 ## Steps to deploy
 ### Installation & Initial setup
 1. Launch AWS CloudShell:
-  -  Login to your AWS account and open AWS CloudShell. Refer to documentation [here](https://docs.aws.amazon.com/cloudshell/latest/userguide/working-with-cloudshell.html) on how to launch CloudShell. All CLI commands in subsequent stories in this Epic should be done in this CloudShell session. Login with the admin user credentials before proceeding with the next steps.
+Login to your AWS account and open AWS CloudShell. Refer to documentation [here](https://docs.aws.amazon.com/cloudshell/latest/userguide/working-with-cloudshell.html) on how to launch CloudShell. All CLI commands in subsequent stories in this Epic should be done in this CloudShell session. Login with the admin user credentials before proceeding with the next steps.
+
 2. Deploy the CloudFormation template:
-  - Create a file named 'template.yaml' with the code from the Code section.
-  - Set the name of the existing IAM user who will have administrative rights for the signing and encryption KMS keys by running the following command: 
+  - Set the name of an existing IAM user who will have administrative rights for the signing and encryption KMS keys by running the following command (replace 'admin' with your IAM admin user name): 
   ```bash
   export QLDB_KMS_ADMIN=admin 
   ```
@@ -72,20 +72,35 @@ The actions performed by the users are explained at a high level in this section
   --capabilities CAPABILITY_NAMED_IAM \
   --no-fail-on-empty-changeset
   ```
+  After deployment, you should see two roles created in IAM with associated policies, one for editor users and another for auditor users. You should also see two KMS keys created one for signing and one for encryption-at-rest with aliases 'qldbKeySign' and 'qldbKeyEncrypt' respectively.
+
 3. Install and Configure tools:
+  - Run the Installer.sh script from the CLI as follows:
   ```bash
   bash Installer.sh
   ```
+  If you ran the script successfully, you should see:
+  - OpenSSL installed. You can check the version with
+  ```bash
+  openssl version
+  ```
+  - QLDB interactive shell installed and configured
+  ```bash
+  qldb --version
+  ```
+  - A QLDB table 'SharedData' created in Ledger 'SharedLedger'.
 ### Signing Transactions
 Run the script Editor.sh to sign a sample data and insert the record into the QLDB ledger table, as below:
   ```bash
   bash Editor.sh
   ```
+If you ran the script successfully, you should see the message signature, the public part of the KMS key and ther documentId of the new QLDB table entry printed on CLI.
 ### Verifying Transactions
 Run the Auditor.sh script to verify the signature of the data from a record in the QLDB ledger table as below:
   ```bash
   bash Auditor.sh
   ```
+If you ran the script successfully, you should see successful verification messages printed on CLI with both KMS signature verification and OpenSSL verification methods.
   
 ## Detailed description
 This section explains the steps to implement the solution in detail.

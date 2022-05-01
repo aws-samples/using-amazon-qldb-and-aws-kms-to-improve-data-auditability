@@ -17,10 +17,11 @@ Resources:
         Statement:
           -
             Effect: "Allow"
-            Principal:
-            AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Principal: 
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action:
-            - "sts:AssumeRole"
+              - "sts:AssumeRole"
       Path: "/"
 
   # IAM Policy for the Editor Role
@@ -53,14 +54,22 @@ Resources:
           -
             Effect: "Allow"
             Action:
-            - kms:GenerateDataKey
-            - kms:Decrypt
-            - kms:Encrypt
+            - "kms:GenerateDataKey"
+            - "kms:Decrypt"
+            - "kms:Encrypt"
             Resource: !GetAtt rKMSKeyForQldbEncryption.Arn
           -
             Effect: "Allow"
             Action:
-            - "cloudshell:*"
+            - "cloudshell:CreateEnvironment"
+            - "cloudshell:CreateSession"
+            - "cloudshell:GetEnvironmentStatus"
+            - "cloudshell:DeleteEnvironment"
+            - "cloudshell:GetFileDownloadUrls"
+            - "cloudshell:GetFileUploadUrls"
+            - "cloudshell:PutCredentials"
+            - "cloudshell:StartEnvironment"
+            - "cloudshell:StopEnvironment"
             Resource: !Sub "arn:aws:cloudshell:${AWS::Region}:${AWS::AccountId}:*"
           -
             Effect: "Allow"
@@ -86,7 +95,8 @@ Resources:
           -
             Effect: "Allow"
             Principal:
-            AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+              AWS: 
+                - !Sub "arn:aws:iam::${AWS::AccountId}:root"
             Action:
             - "sts:AssumeRole"
       Path: "/"
@@ -120,12 +130,20 @@ Resources:
           -
             Effect: "Allow"
             Action:
-            - kms:Decrypt
+            - "kms:Decrypt"
             Resource: !GetAtt rKMSKeyForQldbEncryption.Arn
           -
             Effect: "Allow"
             Action:
-            - "cloudshell:*"
+            - "cloudshell:CreateEnvironment"
+            - "cloudshell:CreateSession"
+            - "cloudshell:GetEnvironmentStatus"
+            - "cloudshell:DeleteEnvironment"
+            - "cloudshell:GetFileDownloadUrls"
+            - "cloudshell:GetFileUploadUrls"
+            - "cloudshell:PutCredentials"
+            - "cloudshell:StartEnvironment"
+            - "cloudshell:StopEnvironment"
             Resource: !Sub "arn:aws:cloudshell:${AWS::Region}:${AWS::AccountId}:*"
           -
             Effect: "Allow"
@@ -141,10 +159,14 @@ Resources:
         -
           Ref: rAuditorRole    
 
-  # KMS Key used to sign and verify table entries in QLDB ledger  
-  # Key rotation cannot be turned on for Asymmetric keys          
+  # KMS Key used to sign and verify table entries in QLDB ledger 
   rKMSKeyForQldbSigning:
     Type: 'AWS::KMS::Key'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: F19
+            reason: "This is an Asymmetric key and KMS does not support Key rotation for Asymmetric keys"
     Properties:
       Description: Key used to sign and verify table entries in QLDB ledger
       KeyUsage: SIGN_VERIFY
@@ -210,7 +232,7 @@ Resources:
           Resource: '*'
           Condition:
             Bool:
-            'kms:GrantIsForAWSResource': 'true'
+              'kms:GrantIsForAWSResource': 'true'
   rSigningKeyAlias:
     Type: 'AWS::KMS::Alias'
     Properties:
@@ -282,7 +304,7 @@ Resources:
           Resource: '*'
           Condition:
             Bool:
-            'kms:GrantIsForAWSResource': 'true'
+              'kms:GrantIsForAWSResource': 'true'
   rEncryptionKeyAlias:
     Type: 'AWS::KMS::Alias'
     Properties:
@@ -290,13 +312,13 @@ Resources:
       TargetKeyId: !Ref rKMSKeyForQldbEncryption
 
   # QLDB Ledger
-  # Note - Deletion Protection is turned off
+  # Note - Deletion Protection is turned on
   # It is recommended for it to be turned on for production to avoid accidental deletion
   rQLDBLedger:
     Type: "AWS::QLDB::Ledger"
     Properties:
       Name: "SharedLedger"
-      DeletionProtection: false
+      DeletionProtection: true
       KmsKey: !Ref rKMSKeyForQldbEncryption
       PermissionsMode: "STANDARD"
  
