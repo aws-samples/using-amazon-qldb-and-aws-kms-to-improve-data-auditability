@@ -72,7 +72,7 @@ Login to your AWS account and open AWS CloudShell. Refer to documentation [here]
   --capabilities CAPABILITY_NAMED_IAM \
   --no-fail-on-empty-changeset
   ```
-  After deployment, you should see two roles created in IAM with associated policies, one for editor users and another for auditor users. You should also see two KMS keys created one for signing and one for encryption-at-rest with aliases 'qldbKeySign' and 'qldbKeyEncrypt' respectively.
+  After deployment, you should see two roles created in IAM with associated policies, one for editor users and another for auditor users. Next you should see a QLDB ledger called 'SharedLedger' created. You should also see two KMS keys created one for signing and one for encryption-at-rest with aliases 'qldbKeySign' and 'qldbKeyEncrypt' respectively.
 
 3. Install and Configure tools:
   - Run the Installer.sh script from the CLI as follows:
