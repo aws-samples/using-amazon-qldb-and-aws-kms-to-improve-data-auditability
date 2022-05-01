@@ -1,4 +1,4 @@
-# aws-blog-improve-data-auditatibility-with-amazon-qldb-and-aws-kms
+# aws-blog-improve-data-auditability-with-amazon-qldb-and-aws-kms
 
 Sample code and artefacts for AWS Blog submission titled "Improve auditability of your data with Amazon QLDB and digital signatures supported by AWS KMS"
 
@@ -54,6 +54,39 @@ The actions performed by the users are explained at a high level in this section
 - Get the record from the table within the ledger, whose data signature needs to be verified
 - Verify signature using either KMS or OpenSSL
 
+## Steps to deploy
+### Installation & Initial setup
+1. Launch AWS CloudShell:
+  -  Login to your AWS account and open AWS CloudShell. Refer to documentation [here](https://docs.aws.amazon.com/cloudshell/latest/userguide/working-with-cloudshell.html) on how to launch CloudShell. All CLI commands in subsequent stories in this Epic should be done in this CloudShell session. Login with the admin user credentials before proceeding with the next steps.
+2. Deploy the CloudFormation template:
+  - Create a file named 'template.yaml' with the code from the Code section.
+  - Set the name of the existing IAM user who will have administrative rights for the signing and encryption KMS keys by running the following command: 
+  ```bash
+  export QLDB_KMS_ADMIN=admin 
+  ```
+  - Deploy the resources declared in the template.yaml using the following command:
+ ```bash
+  aws cloudformation deploy --region us-east-1 --template-file ./template.yaml \
+  --stack-name QLDB-KMS-TEST \
+  --parameter-overrides pAdminUserName=$QLDB_KMS_ADMIN \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --no-fail-on-empty-changeset
+  ```
+3. Install and Configure tools:
+  ```bash
+  bash Installer.sh
+  ```
+### Signing Transactions
+Run the script Editor.sh to sign a sample data and insert the record into the QLDB ledger table, as below:
+  ```bash
+  bash Editor.sh
+  ```
+### Verifying Transactions
+Run the Auditor.sh script to verify the signature of the data from a record in the QLDB ledger table as below:
+  ```bash
+  bash Auditor.sh
+  ```
+  
 ## Detailed description
 This section explains the steps to implement the solution in detail.
 
@@ -120,6 +153,7 @@ Launch AWS CloudShell and proceed to assume the IAM role of the Auditor user. Ga
 
 This concludes the entire process from setup to verification.
 
+
 ## Cleanup
 
 To cleanup the artefacts setup in this pattern, run the steps below:
@@ -130,7 +164,6 @@ cd ~/qldb-v2.0.1-linux
 DROP TABLE SharedData
 # press `CTRL-D` to exit QLDB Interactive Shell
 ```
-
 
 2. Delete the CloudFormation stack, by running the following command:
 ```bash
