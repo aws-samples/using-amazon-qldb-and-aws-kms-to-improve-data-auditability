@@ -44,7 +44,7 @@ cat <<EOT > ~/.config/qldbshell/config.ion
     // Determines whether or not metrics will be emitted after the results of a query are shown.
     display_query_metrics: false,
     // Set terminator_required to true indicates that pressing the enter key at the end of a line of
-    input will not execute the command by itself.
+    // input will not execute the command by itself.
     // Alternately, if you end your statement with a semi-colon you will execute the statement.
     terminator_required: false
   }
