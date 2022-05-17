@@ -21,6 +21,7 @@
 # Prerequisites: 
 #   - Run the Installer.sh script to complete the installation process
 #   - Run the Editor.sh script successfully to complete the Editor's workflow
+#   - Run this script from the same working directory as the previous step
 # ------------------------------------------------------------------
 
 # Step 1 - Assume the Auditor role
