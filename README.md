@@ -86,7 +86,8 @@ Login to your AWS account and open AWS CloudShell. Refer to documentation [here]
   ```
   - QLDB interactive shell installed and configured
   ```bash
-  qldb --version
+  cd ~/qldb-v2.0.1-linux
+  ./qldb --version
   ```
   - A QLDB table 'SharedData' created in Ledger 'SharedLedger'.
 ### Signing Transactions
